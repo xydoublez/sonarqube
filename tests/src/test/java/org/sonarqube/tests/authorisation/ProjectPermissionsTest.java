@@ -29,6 +29,7 @@ import org.sonarqube.tests.Tester;
 import org.sonarqube.ws.WsProjects.CreateWsResponse.Project;
 import org.sonarqube.ws.WsUsers.CreateWsResponse.User;
 import org.sonarqube.ws.client.component.ShowWsRequest;
+import org.sonarqube.ws.client.organization.UpdateProjectVisibilityWsRequest;
 import org.sonarqube.ws.client.project.UpdateVisibilityRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,6 +67,30 @@ public class ProjectPermissionsTest {
     tester.wsClient().projects().updateVisibility(UpdateVisibilityRequest.builder().setProject(project.getKey()).setVisibility("private").build());
 
     assertThat(tester.wsClient().components().show(new ShowWsRequest().setKey(project.getKey())).getComponent().getVisibility()).isEqualTo("private");
+  }
+
+  /**
+   * SONAR-10569
+   */
+  @Test
+  public void change_default_project_visibility_from_ws() {
+    try {
+      tester.wsClient().organizations().updateProjectVisibility(UpdateProjectVisibilityWsRequest.builder()
+        .setOrganization(tester.organizations().getDefaultOrganization().getKey())
+        .setProjectVisibility("private")
+        .build());
+
+      Project project = tester.projects().generate(null);
+
+      assertThat(tester.wsClient().components().show(new ShowWsRequest().setKey(project.getKey())).getComponent().getVisibility()).isEqualTo("private");
+
+    } finally {
+      // Restore default visibility to public to not break other tests
+      tester.wsClient().organizations().updateProjectVisibility(UpdateProjectVisibilityWsRequest.builder()
+        .setOrganization(tester.organizations().getDefaultOrganization().getKey())
+        .setProjectVisibility("public")
+        .build());
+    }
   }
 
 }
